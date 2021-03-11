@@ -17,50 +17,49 @@ function sortAvailable(a, b) {
   if (a[0] > b[0]) return -1;
 }
 
-// sort available seats by id
-function sortAvailablePairs(a, b) {
-  if (a[2] > b[2]) return 1;
-  if (a[2] < b[2]) return -1;
-  return 0;
-}
-
 // takes in sorted/weighted seats and finds best match if one exists
 function pickSeats(seats, need = 1) {
-  // console.log('seats:', seats);
   if (need === 1) return [seats[0][0]];
 
-  const groupedSeats = [];
-
-  // still has a bug in here for if row a is taken but row b is not
-  for (let i = 0; i < seats.length - 1; i++) {
-    if (!groupedSeats.length) {
-      groupedSeats.push(seats[i]);
-      continue;
-    }
-
-    let found = true;
-    let skip = false;
-
-    for (let j = 0; j < groupedSeats.length; j++) {
-      skip = seats[i][0] === groupedSeats[j][0];
-      if (!skip) {
-        const diff = Math.abs(seats[i][2] - groupedSeats[j][2]);
-        found = diff === 1;
-        if (diff === 1) groupedSeats.push(seats[i]);
+  const findNearest = (currentGroup, remainingSeats) => {
+    for (let i = 0; i < currentGroup.length; ++i) {
+      const seatLoc = currentGroup[i][2];
+      for (let j = 0; j < remainingSeats.length; ++j) {
+        if (
+          Math.abs(seatLoc - remainingSeats[j][2]) === 1 &&
+          !currentGroup.includes(remainingSeats[j])
+        ) {
+          currentGroup.push(remainingSeats[j]);
+          return currentGroup;
+        }
       }
     }
 
-    if (!found && !skip) {
-      groupedSeats.length = 0;
-      groupedSeats.push(seats[i]);
+    return currentGroup;
+  };
+
+  let group = [seats[0]];
+  const seatsCopy = seats.slice(1);
+
+  while (seatsCopy.length > 0) {
+    let len = group.length;
+    group = findNearest(group, seatsCopy);
+
+    if (len === group.length) {
+      const next = seatsCopy.shift();
+      group.length = 0;
+      group.push(next);
+      continue;
     }
 
-    if (groupedSeats.length === need) break;
+    seatsCopy.shift();
+
+    if (group.length === need) {
+      return group.map(seat => seat[0]).sort();
+    }
   }
 
-  return groupedSeats.length === need
-    ? groupedSeats.sort(sortAvailablePairs).map(seat => seat[0])
-    : [];
+  return [];
 }
 
 module.exports = function selectBestSeats(seatsData = {}, seatsNeeded = 1) {
